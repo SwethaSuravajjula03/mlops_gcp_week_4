@@ -1,0 +1,63 @@
+# .github/workflows/sanity_test.yml
+
+name: Sanity test
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  test_model:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Set up CML
+        uses: iterative/setup-cml@v2
+
+      - name: Validate project structure
+        run: |
+          required=(
+            "data/iris.csv"
+            "src/iris_pipeline.py"
+            "tests/test_iris_pipeline.py"
+            "requirements.txt"
+            "README.md"
+          )
+          missing=false
+          for f in "${required[@]}"; do
+            if [[ ! -e "$f" ]]; then
+              echo "::error ::Missing required file or directory: $f"
+              missing=true
+            fi
+          done
+          $missing && exit 1 || echo "All required files present."
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip setuptools wheel
+          pip install -r requirements.txt
+
+      - name: Run pytest
+        run: |
+          pytest -q 2>&1 | tee test_output.txt
+
+      - name: Create CML report
+        env:
+          REPO_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "# IRIS Pipeline Sanity Test Results" > report.md
+          echo '```' >> report.md
+          cat test_output.txt >> report.md
+          echo '```' >> report.md
+          cml comment create --publish report.md

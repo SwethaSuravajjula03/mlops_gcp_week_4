@@ -1,5 +1,4 @@
 pandas==2.3.0
 scikit-learn==1.7.0
 pytest==8.4.1
-cloud-ml-sdk==0.3.71
 cml==0.0.1
